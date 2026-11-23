@@ -1,0 +1,11 @@
+numpy
+scipy
+pandas
+pyarrow
+scikit-learn
+matplotlib
+fonttools
+certifi
+ONE-api
+ibllib
+iblatlas
