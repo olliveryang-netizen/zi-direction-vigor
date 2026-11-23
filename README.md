@@ -21,7 +21,7 @@ posteromedial thalamic nucleus (VPM) for comparison.
 ## Installation
 
 ```bash
-git clone https://github.com/USERNAME/zi-direction-vigor.git
+git clone https://github.com/olliveryang-netizen/zi-direction-vigor.git
 cd zi-direction-vigor
 python3 -m venv ibl_env
 source ibl_env/bin/activate
