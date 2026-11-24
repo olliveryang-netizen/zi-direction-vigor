@@ -538,6 +538,26 @@ def parse_imposter(path):
     return out
 
 
+def parse_checks(path):
+    """Mouse-clustered unit-fraction tests and the within-insertion overlap test from summary_15."""
+    out = {}
+    if not Path(path).exists():
+        return out
+    kind = None
+    for line in Path(path).read_text(encoding='utf-8').splitlines():
+        if line.strip().startswith('direction units'):
+            kind = 'direction'
+        elif line.strip().startswith('speed units'):
+            kind = 'speed'
+        m = re.match(r'\s+ZI - (\S+): [+-][\d.]+ points \(mouse-bootstrap 95% CI .*?; p=([\d.eE+-]+)\)', line)
+        if m and kind:
+            out[(kind, m.group(1))] = float(m.group(2))
+        m = re.match(r'\s+both (\d+) .*expected ([\d.]+) .*p=([\d.eE+-]+)', line)
+        if m:
+            out['overlap'] = dict(both=int(m.group(1)), expected=float(m.group(2)), p=float(m.group(3)))
+    return out
+
+
 def parse_pose_latency(path):
     out, reg = {}, None
     if not Path(path).exists():
@@ -857,10 +877,15 @@ def figure2():
         both, c_only, s_only = int((sc_ & ss_).sum()), int((sc_ & ~ss_).sum()), int((~sc_ & ss_).sum())
         neither = int((~sc_ & ~ss_).sum())
         tot = both + c_only + s_only + neither
-        odds, pf = stats.fisher_exact([[both, c_only], [s_only, neither]])
+        chk = parse_checks(CMP / 'summary_15_revision_checks.txt').get('overlap')
         vals = np.array([c_only, both, s_only]) / tot
         ax.bar([0, 1, 2], vals, 0.62, color=[DIR, MIX, VIG], lw=0)
-        exp_both = (c_only + both) * (s_only + both) / tot ** 2
+        if chk:                                     # expected overlap under within-insertion shuffling
+            exp_both, test_txt = chk['expected'] / tot, f'within-insertion permutation test, {fmt_p(chk["p"])}'
+        else:
+            odds, pf = stats.fisher_exact([[both, c_only], [s_only, neither]])
+            exp_both, test_txt = (c_only + both) * (s_only + both) / tot ** 2, f'Fisher exact test OR = {odds:.2f}, {fmt_p(pf)}'
+        exp_lab = 'expected under within-insertion shuffling' if chk else 'expected if independent'
         ln, = ax.plot([0.62, 1.38], [exp_both] * 2, color=INK, lw=1.1, ls=(0, (2, 1.5)))
         ln._skip_check = True
         for xi, n_ in enumerate((c_only, both, s_only)):
@@ -870,7 +895,7 @@ def figure2():
         ax.set_xticklabels(['Direction\nonly', 'Both', 'Speed\nonly'])
         ax.set(ylabel='Fraction of units', ylim=(0, max(vals) * 1.3))
         add_leg('Fig2', f'E: overlap of direction and speed coding before movement (counts above bars; dashed line, '
-                        f'overlap expected if independent). Fisher exact test OR = {odds:.2f}, {fmt_p(pf)}.')
+                        f'overlap {exp_lab}). {test_txt}.')
     else:
         note_missing(ax, 'results/glm_units.csv')
 
@@ -1198,6 +1223,7 @@ def figure4():
 # Figure 5 - direction and vigour are separate; vigour information is specific to ZI
 # ============================================================================
 def figure5():
+    CHK = parse_checks(CMP / 'summary_15_revision_checks.txt')
     fig, A = new_fig([['A', 'B', 'C'], ['D', 'E', 'F']], 4.9)
     rng = np.random.default_rng(5)
     ss = csv(PROJ / 'results' / 'subspace_summary.csv')
@@ -1326,10 +1352,14 @@ def figure5():
             yb = top * 1.06
             for j, reg in enumerate(regs[1:], start=1):
                 a, b = cnt['ZI'], cnt[reg]
-                _, p = stats.fisher_exact([[a[0], a[1] - a[0]], [b[0], b[1] - b[0]]])
+                p = CHK.get(('speed', reg))
+                lab = 'mouse-level cluster bootstrap'
+                if p is None:
+                    _, p = stats.fisher_exact([[a[0], a[1] - a[0]], [b[0], b[1] - b[0]]])
+                    lab = 'Fisher'
                 bracket(ax, 0, j, yb, p, h=top * 0.04)
                 yb += top * 0.2
-                txt.append(f'ZI vs {reg} Fisher {fmt_p(p)}')
+                txt.append(f'ZI vs {reg} {lab} {fmt_p(p)}')
         add_leg('Fig5', 'F: fraction of units with a significant speed effect in the movement window (GLM with all controls; '
                         '95% binomial CI): ' + ', '.join(f'{r} {cnt[r][0]}/{cnt[r][1]}' for r in regs) + '; ' + '; '.join(txt) + '.')
     save(fig, 'Fig5')
@@ -1339,6 +1369,7 @@ def figure5():
 # Figure 6 - comparison with secondary motor cortex and sensory thalamus
 # ============================================================================
 def figure6():
+    CHK = parse_checks(CMP / 'summary_15_revision_checks.txt')
     fig, A = new_fig([['A', 'B', 'C'], ['D', 'E', 'F']], 4.9)
     rng = np.random.default_rng(6)
     gs_ = per_region('glm_summary.csv')
@@ -1363,12 +1394,16 @@ def figure6():
             yb = top * 1.06
             for j, reg in enumerate(regs[1:], start=1):
                 a, b = cnt['ZI'], cnt[reg]
-                _, p = stats.fisher_exact([[a[0], a[1] - a[0]], [b[0], b[1] - b[0]]])
+                p = CHK.get(('direction', reg))
+                lab = 'mouse-level cluster bootstrap'
+                if p is None:
+                    _, p = stats.fisher_exact([[a[0], a[1] - a[0]], [b[0], b[1] - b[0]]])
+                    lab = 'Fisher exact'
                 bracket(ax, 0, j, yb, p, h=top * 0.04)
                 yb += top * 0.2
-                txt.append(f'ZI vs {reg} {fmt_p(p)}')
+                txt.append(f'ZI vs {reg} {lab} {fmt_p(p)}')
         add_leg('Fig6', 'A: units with significant pre-movement direction coding (GLM with all controls): '
-                        + ', '.join(f'{r} {cnt[r][0]}/{cnt[r][1]}' for r in regs) + '; Fisher exact ' + '; '.join(txt) + '.')
+                        + ', '.join(f'{r} {cnt[r][0]}/{cnt[r][1]}' for r in regs) + '; ' + '; '.join(txt) + '.')
     else:
         note_missing(ax, 'glm_summary.csv')
 

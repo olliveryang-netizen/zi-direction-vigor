@@ -1,8 +1,12 @@
 # zi-direction-vigor
 
-Analysis code for:
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24482384.svg)](https://doi.org/10.5281/zenodo.24482384)
 
-> Yang Y. Choice-related activity in the zona incerta reflects the direction and vigor of the ongoing movement. *Submitted to Journal of Neurophysiology.*
+Analysis code for the article *Choice-related activity in the zona incerta reflects the direction and
+vigor of the ongoing movement* (submitted to the Journal of Neurophysiology).
+
+The version used for the article (v1.0.0) is archived at Zenodo:
+[doi:10.5281/zenodo.24482384](https://doi.org/10.5281/zenodo.24482384).
 
 The analyses use the public International Brain Laboratory (IBL) Brain-Wide Map release
 (`2023_12_bwm_release`). The pipeline downloads the data, preprocesses every zona incerta (ZI)
@@ -70,7 +74,10 @@ ANALYSIS_REGION=VPM python 12_pose_control.py
 # 4. Neural vs pose timing
 python 13_pose_timecourse.py
 
-# 5. Paper figures and legend numbers
+# 5. Additional statistical checks
+python 15_revision_checks.py
+
+# 6. Paper figures and legend numbers
 python 14_make_figures.py
 ```
 
@@ -94,10 +101,11 @@ runs the analyses only, and `run_all.py --only 03` runs a single step.
 | `11_unit_matched.py` | decoding with equal numbers of units per region | Fig. 6C |
 | `12_pose_control.py` | control for paw and nose movements (pose estimation) | Fig. 6F |
 | `13_pose_timecourse.py` | timing of neural vs pose direction information | Fig. 4C–F, S4 |
+| `15_revision_checks.py` | direct between-region tests, mouse-clustered statistics, blocked cross-validation | Results text |
 | `14_make_figures.py` | all paper figures from the saved results | all |
 | `config.py`, `common.py` | shared settings and helper functions | – |
 
-Steps 02–13 write `summary_NN_*.txt` files with the numbers reported in the paper;
+Steps 02–13 and 15 write `summary_NN_*.txt` files with the numbers reported in the paper;
 step 14 writes `figures_paper/figure_legends.md`.
 
 ## Figures
@@ -125,5 +133,4 @@ MIT License (see `LICENSE`).
 
 ## Contact
 
-Yuheng Yang, Department of Physiology, Yamaguchi University Graduate School of Medicine,
-Yamaguchi 755-8505, Japan.
+olliveryang (olliveryang@gmail.com)
